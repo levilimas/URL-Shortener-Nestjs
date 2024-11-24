@@ -1,0 +1,50 @@
+{
+  "name": "url-shortener-nestjs",
+  "version": "0.1.0",
+  "description": "URL Shortener service built with NestJS",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typeorm": "npx typeorm-ts-node-commonjs",
+    "migration:create": "typeorm-ts-node-commonjs migration:create",
+    "migration:generate": "npx typeorm-ts-node-commonjs migration:generate -d ./src/infrastructure/database/data-source.ts ./src/infrastructure/database/migrations/CreateInitialTables",
+    "migration:run": "npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts",
+    "migration:revert": "npm run typeorm migration:revert -- -d src/infrastructure/database/data-source.ts"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^22.9.3",
+    "@types/passport": "^1.0.17",
+    "cross-env": "^7.0.3",
+    "ts-node": "^10.9.2",
+    "typeorm-ts-node-commonjs": "^0.3.20",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/swagger": "^8.0.7",
+    "@nestjs/typeorm": "^10.0.2",
+    "bcrypt": "^5.1.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "passport": "^0.7.0",
+    "pg": "^8.13.1",
+    "typeorm": "^0.3.20",
+    "url-shortener-nestjs": "file:"
+  }
+}
