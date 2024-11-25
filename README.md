@@ -1,35 +1,41 @@
 # URL Shortener Service
 
-## Description
-A URL shortener service built with NestJS that allows users to create short URLs and track their usage.
+## Descrição
+Serviço de encurtamento de URLs construído com NestJS que permite aos usuários criar URLs curtas e rastrear seu uso. Inclui autenticação de usuários, monitoramento e métricas.
 
-## Prerequisites
+## Tecnologias Utilizadas
+- NestJS
+- TypeScript
+- PostgreSQL
+- TypeORM
+- JWT Authentication
+- Swagger/OpenAPI
+- Docker & Docker Compose
+- Prometheus & Grafana (Monitoramento)
+- Winston (Logging)
+- Jest (Testes)
+
+## Pré-requisitos
 - Docker
 - Docker Compose
-- Node.js 18+ (for local development)
+- Node.js 18+ (para desenvolvimento local)
+- npm/yarn
 
-## Installation and Running
+## Instalação e Execução
 
-### Development
-1. Clone the repository
-2. Create a `.env` file based on `.env.example`
-3. Run the development environment:
+### 1. Clone o repositório
 ```bash
-docker-compose up -d
+git clone https://github.com/seu-usuario/url-shortener-nestjs.git
+cd url-shortener-nestjs
 ```
 
-### Production
-1. Create a `.env` file with production configurations
-2. Run the production environment:
+### 2. Configure as variáveis de ambiente
+Copie o arquivo .env.example para .env:
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+cp .env.example .env
 ```
 
-## API Documentation
-After starting the application, visit:
-- http://localhost:3000/api/docs
-
-## Environment Variables
+Exemplo de configuração do .env:
 ```env
 # Application
 PORT=3000
@@ -48,21 +54,156 @@ JWT_SECRET=your_jwt_secret
 JWT_EXPIRATION=1h
 ```
 
-## Features
-- URL shortening
-- User authentication
-- Click tracking
-- API documentation
-- Docker support
+### 3. Iniciar o ambiente
 
-## Running Tests
+#### Desenvolvimento com Docker
 ```bash
-# unit tests
+# Criar a rede Docker
+docker network create url-shortener-network
+
+# Iniciar a aplicação
+docker-compose up -d
+
+# Iniciar monitoramento (opcional)
+docker-compose -f docker-compose.monitoring.yml up -d
+```
+
+#### Desenvolvimento Local
+```bash
+# Instalar dependências
+npm install
+
+# Executar migrações
+npm run migration:run
+
+# Iniciar em modo desenvolvimento
+npm run start:dev
+```
+
+## Acessando a Aplicação
+
+### API e Documentação
+- API: http://localhost:3000/api
+- Swagger Documentation: http://localhost:3000/api/docs
+
+### Monitoramento
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3001
+  - Usuário: admin
+  - Senha: admin
+
+## Endpoints Principais
+
+### Autenticação
+- POST /api/auth/register - Registro de usuário
+- POST /api/auth/login - Login de usuário
+
+### URLs
+- POST /api/urls - Criar URL curta (público)
+- POST /api/urls/auth - Criar URL curta (autenticado)
+- GET /api/urls/my-urls - Listar URLs do usuário
+- GET /api/:shortCode - Redirecionar para URL original
+- PUT /api/urls/:id - Atualizar URL
+- DELETE /api/urls/:id - Deletar URL
+
+### Health Check e Métricas
+- GET /api/health - Status da aplicação
+- GET /api/health/metrics - Métricas do Prometheus
+
+## Monitoramento e Observabilidade
+
+### Prometheus
+- Coleta métricas da aplicação
+- Métricas personalizadas incluem:
+  - Contagem total de requisições
+  - Duração das requisições
+  - Status das requisições
+  - Métricas do banco de dados
+
+### Grafana
+- Dashboards pré-configurados para:
+  - Performance da API
+  - Métricas de URLs
+  - Métricas de usuários
+  - Status do sistema
+
+### Logs
+- Logs de desenvolvimento: Console
+- Logs de produção: Arquivos em /logs
+  - error.log: Apenas erros
+  - combined.log: Todos os logs
+
+## Testes
+```bash
+# Executar testes unitários
 npm run test
 
-# e2e tests
-npm run test:e2e
-
-# test coverage
+# Executar testes com coverage
 npm run test:cov
+
+# Executar testes e2e
+npm run test:e2e
 ```
+
+## Comandos Docker Úteis
+```bash
+# Parar todos os serviços
+docker-compose down
+docker-compose -f docker-compose.monitoring.yml down
+
+# Ver logs
+docker-compose logs -f api
+
+# Reiniciar serviço específico
+docker-compose restart api
+
+# Limpar volumes
+docker-compose down -v
+```
+
+## Estrutura do Projeto
+```
+url-shortener-nestjs/
+├── docker/
+│   ├── development/
+│   │   └── Dockerfile
+│   └── production/
+│       └── Dockerfile
+├── monitoring/
+│   ├── prometheus/
+│   │   └── prometheus.yml
+│   └── grafana/
+│       └── provisioning/
+├── src/
+│   ├── core/
+│   │   ├── application/
+│   │   ├── domain/
+│   │   └── shared/
+│   ├── infrastructure/
+│   │   ├── config/
+│   │   ├── database/
+│   │   └── modules/
+│   └── main.ts
+├── test/
+├── docker-compose.yml
+├── docker-compose.monitoring.yml
+└── README.md
+```
+
+## Contribuindo
+1. Faça o fork do projeto
+2. Crie sua feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit suas mudanças (`git commit -m 'Add some amazing feature'`)
+4. Push para a branch (`git push origin feature/amazing-feature`)
+5. Abra um Pull Request
+
+## Pontos de Melhoria
+- Implementar cache com Redis
+- Adicionar rate limiting
+- Implementar sistema de filas
+- Melhorar cobertura de testes
+- Adicionar mais métricas e dashboards
+- Implementar CI/CD
+
+## Licença
+Este projeto está sob a licença MIT.
