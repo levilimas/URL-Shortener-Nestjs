@@ -4,39 +4,45 @@ services:
   api:
     container_name: url-shortener-api
     build:
-      context: ../../
-      dockerfile: docker/development/Dockerfile
+      context: .
       target: development
-    volumes:
-      - ../../:/usr/src/app
-      - /usr/src/app/node_modules
+      dockerfile: Dockerfile
     ports:
-      - ${PORT}:${PORT}
-    command: npm run start:dev
-    env_file:
-      - ../../.env
-    networks:
-      - url-shortener-network
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_DATABASE=${DB_DATABASE:-url_shortener}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
+      - URL_PREFIX=${URL_PREFIX:-http://localhost:3000}
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
     depends_on:
       - postgres
+    networks:
+      - url-shortener-network
+    command: npm run start:dev
 
   postgres:
     container_name: url-shortener-db
     image: postgres:14-alpine
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${DB_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${DB_DATABASE:-url_shortener}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - url-shortener-network
-    environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_DATABASE}
-      PG_DATA: /var/lib/postgresql/data
-    ports:
-      - ${DB_PORT}:5432
-    volumes:
-      - pgdata:/var/lib/postgresql/data
 
 networks:
   url-shortener-network:
 
 volumes:
-  pgdata:
+  postgres_data:

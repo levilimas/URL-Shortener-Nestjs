@@ -1,4 +1,3 @@
-// src/infrastructure/modules/urls/urls.controller.ts
 import {
     Controller,
     Get,
