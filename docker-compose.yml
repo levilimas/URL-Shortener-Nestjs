@@ -1,14 +1,26 @@
 version: '3.8'
 
 services:
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8090:8090"
+    depends_on:
+      - api
+    networks:
+      - url-shortener-network
+
   api:
     container_name: url-shortener-api
     build:
       context: .
       target: development
       dockerfile: docker/development/Dockerfile
-    ports:
-      - "${PORT:-3000}:3000"
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=development
       - DB_HOST=postgres
@@ -17,7 +29,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_DATABASE=${DB_DATABASE:-url_shortener}
       - JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
-      - URL_PREFIX=${URL_PREFIX:-http://localhost:3000}
+      - URL_PREFIX=${URL_PREFIX:-http://localhost:8080}
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

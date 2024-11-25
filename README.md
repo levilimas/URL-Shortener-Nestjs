@@ -133,6 +133,32 @@ npm run start:dev
   - error.log: Apenas erros
   - combined.log: Todos os logs
 
+## API Gateway (KrakenD)
+
+O projeto utiliza KrakenD como API Gateway, proporcionando:
+- Rate limiting
+- Caching
+- CORS
+- Métricas
+- Logging
+- Validação de JWT
+
+### Endpoints do Gateway
+Todos os endpoints da API são acessíveis através do gateway na porta 8080:
+- API Gateway: http://localhost:8080
+- Métricas do Gateway: http://localhost:8090
+
+### Configuração
+A configuração do KrakenD está localizada em `gateway/krakend/krakend.json`
+
+### Recursos do Gateway
+- Cache de respostas (TTL: 1 hora)
+- Timeout global de 3 segundos
+- CORS configurado para desenvolvimento
+- Métricas expostas na porta 8090
+- Logs formatados
+- Validação de JWT para rotas autenticadas
+
 ## Testes
 ```bash
 # Executar testes unitários

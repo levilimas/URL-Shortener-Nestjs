@@ -26,3 +26,6 @@ COPY --from=build /usr/src/app/dist ./dist
 
 EXPOSE 3000
 CMD ["node", "dist/main"]
+
+FROM devopsfaith/krakend:latest
+COPY krakend/krakend.json /etc/krakend/krakend.json
