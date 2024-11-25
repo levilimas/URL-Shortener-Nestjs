@@ -224,12 +224,10 @@ url-shortener-nestjs/
 5. Abra um Pull Request
 
 ## Pontos de Melhoria
+ ### Como o projeto ainda não está como deveria, pretendo acrescentar os seguintes tópicos nos próximos dias
 - Implementar cache com Redis
 - Adicionar rate limiting
 - Implementar sistema de filas
 - Melhorar cobertura de testes
 - Adicionar mais métricas e dashboards
 - Implementar CI/CD
-
-## Licença
-Este projeto está sob a licença MIT.
