@@ -1,6 +1,6 @@
 {
   "name": "url-shortener-nestjs",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "URL Shortener service with authentication and monitoring",
   "author": "Levi Lima",
   "private": true,
