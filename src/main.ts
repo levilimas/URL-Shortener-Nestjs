@@ -5,6 +5,7 @@ import { setupSwagger } from './infrastructure/config/swagger.config';
 import * as express from 'express';
 import * as compression from 'compression';
 import helmet from 'helmet';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,7 +28,15 @@ async function bootstrap() {
     }),
   );
 
-  setupSwagger(app);
+  const config = new DocumentBuilder()
+    .setTitle('URL Shortener API')
+    .setDescription('API for shortening URLs with user authentication')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   app.setGlobalPrefix('api');
 
