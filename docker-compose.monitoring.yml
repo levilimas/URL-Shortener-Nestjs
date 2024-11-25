@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: url-shortener-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - url-shortener-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: url-shortener-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - url-shortener-network
+    depends_on:
+      - prometheus
+
+networks:
+  url-shortener-network:
+    external: true
+
+volumes:
+  grafana_data:

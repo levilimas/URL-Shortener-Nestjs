@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  api:
+    container_name: url-shortener-api
+    build:
+      context: .
+      target: development
+      dockerfile: docker/development/Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_DATABASE=${DB_DATABASE:-url_shortener}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret}
+      - URL_PREFIX=${URL_PREFIX:-http://localhost:3000}
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+    networks:
+      - url-shortener-network
+
+  postgres:
+    container_name: url-shortener-db
+    image: postgres:14-alpine
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${DB_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${DB_DATABASE:-url_shortener}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - url-shortener-network
+
+networks:
+  url-shortener-network:
+    name: url-shortener-network
+    driver: bridge
+
+volumes:
+  postgres_data:
