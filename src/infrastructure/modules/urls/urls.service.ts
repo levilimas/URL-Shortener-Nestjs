@@ -1,22 +1,30 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+// src/infrastructure/modules/urls/urls.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UrlEntity } from '../../../core/domain/entities/url.entity';
 import { CreateUrlDto } from '../../../application/dtos/url/create-url.dto';
 import { UpdateUrlDto } from '../../../application/dtos/url/update-url.dto';
 import { ConfigService } from '@nestjs/config';
-import { nanoid } from 'nanoid';
 
 @Injectable()
 export class UrlsService {
+  private generateShortCode: () => string;
+
   constructor(
     @InjectRepository(UrlEntity)
     private urlRepository: Repository<UrlEntity>,
     private configService: ConfigService,
-  ) {}
+  ) {
+    this.initializeNanoid();
+  }
 
-  private generateShortCode(): string {
-    return nanoid(6);
+  private async initializeNanoid() {
+    const nanoid = await import('nanoid');
+    this.generateShortCode = nanoid.customAlphabet(
+      '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      6
+    );
   }
 
   async create(createUrlDto: CreateUrlDto, userId?: string): Promise<UrlEntity> {

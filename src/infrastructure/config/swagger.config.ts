@@ -8,7 +8,15 @@ export function setupSwagger(app: INestApplication): void {
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
     .addTag('urls', 'URL shortening operations')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Enter JWT token',
+      },
+      'JWT',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
