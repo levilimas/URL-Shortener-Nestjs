@@ -1,8 +1,8 @@
 {
   "name": "url-shortener-nestjs",
-  "version": "0.1.0",
-  "description": "URL Shortener service built with NestJS",
-  "author": "",
+  "version": "0.4.0",
+  "description": "URL Shortener service with authentication and monitoring",
+  "author": "Levi Lima",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -23,7 +23,10 @@
     "migration:generate": "npx typeorm-ts-node-commonjs migration:generate -d ./src/infrastructure/database/data-source.ts ./src/infrastructure/database/migrations/CreateInitialTables",
     "migration:run": "npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts",
     "migration:revert": "npm run typeorm migration:revert -- -d src/infrastructure/database/data-source.ts",
-    "test:ci": "jest --ci --coverage --maxWorkers=2"
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "version:patch": "npm version patch && git push --follow-tags",
+    "version:minor": "npm version minor && git push --follow-tags",
+    "version:major": "npm version major && git push --follow-tags"
   },
   "jest": {
     "moduleFileExtensions": [
