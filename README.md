@@ -25,14 +25,14 @@ Serviço de encurtamento de URLs construído com NestJS que permite aos usuário
 
 ### 1. Clone o repositório
 ```bash
-git clone https://github.com/seu-usuario/url-shortener-nestjs.git
+git clone https://github.com/levilimas/url-shortener-nestjs.git
 cd url-shortener-nestjs
 ```
 
 ### 2. Configure as variáveis de ambiente
 Copie o arquivo .env.example para .env:
 ```bash
-cp .env.example .env
+cp .env .env
 ```
 
 Exemplo de configuração do .env:
@@ -224,12 +224,10 @@ url-shortener-nestjs/
 5. Abra um Pull Request
 
 ## Pontos de Melhoria
+ ### Como o projeto ainda não está como deveria, pretendo acrescentar os seguintes tópicos nos próximos dias
 - Implementar cache com Redis
 - Adicionar rate limiting
 - Implementar sistema de filas
 - Melhorar cobertura de testes
 - Adicionar mais métricas e dashboards
 - Implementar CI/CD
-
-## Licença
-Este projeto está sob a licença MIT.
