@@ -1,4 +1,3 @@
-// src/infrastructure/modules/urls/urls.service.ts
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -37,7 +36,6 @@ export class UrlsService {
     let shortCode: string;
     let isCustomCode = false;
 
-    // Handle custom short code
     if (createUrlDto.customCode) {
       await this.validateCustomCode(createUrlDto.customCode);
       shortCode = createUrlDto.customCode;
@@ -46,13 +44,11 @@ export class UrlsService {
       shortCode = await this.generateUniqueShortCode();
     }
 
-    // Hash password if provided
     let hashedPassword: string | undefined;
     if (createUrlDto.password) {
       hashedPassword = await bcrypt.hash(createUrlDto.password, 10);
     }
 
-    // Parse expiration date
     let expiresAt: Date | undefined;
     if (createUrlDto.expiresAt) {
       expiresAt = new Date(createUrlDto.expiresAt);
@@ -65,7 +61,7 @@ export class UrlsService {
       originalUrl: createUrlDto.originalUrl,
       shortCode,
       userId,
-      description: createUrlDto.description,
+      description: createUrlDto.title,
       expiresAt,
       password: hashedPassword,
       maxClicks: createUrlDto.maxClicks,
@@ -74,7 +70,6 @@ export class UrlsService {
 
     const savedUrl = await this.urlRepository.save(url);
 
-    // Generate QR code if requested
     if (createUrlDto.generateQrCode) {
       const shortUrl = this.getShortUrl(savedUrl.shortCode);
       savedUrl.qrCodeUrl = this.qrCodeService.generateQrCodeUrl(shortUrl);
@@ -125,24 +120,20 @@ export class UrlsService {
       throw new NotFoundException('URL not found');
     }
 
-    // Check if URL is accessible
     if (!url.isAccessible()) {
       if (url.isExpired()) {
         throw new BadRequestException('URL has expired');
-      }
-      if (url.hasReachedMaxClicks()) {
-        throw new BadRequestException('URL has reached maximum clicks');
       }
       if (!url.isActive) {
         throw new BadRequestException('URL is not active');
       }
     }
 
-    // Check password if required
     if (url.password) {
       if (!password) {
         throw new BadRequestException('Password required');
       }
+      
       const isPasswordValid = await bcrypt.compare(password, url.password);
       if (!isPasswordValid) {
         throw new BadRequestException('Invalid password');
@@ -161,25 +152,20 @@ export class UrlsService {
       throw new NotFoundException('URL not found or not owned by user');
     }
 
-    // Update fields
     if (updateUrlDto.originalUrl) {
       url.originalUrl = updateUrlDto.originalUrl;
     }
+    
     if (updateUrlDto.description !== undefined) {
       url.description = updateUrlDto.description;
     }
-    if (updateUrlDto.expiresAt) {
-      const expiresAt = new Date(updateUrlDto.expiresAt);
-      if (expiresAt <= new Date()) {
-        throw new BadRequestException('Expiration date must be in the future');
-      }
-      url.expiresAt = expiresAt;
-    }
+    
     if (updateUrlDto.isActive !== undefined) {
       url.isActive = updateUrlDto.isActive;
     }
-    if (updateUrlDto.maxClicks !== undefined) {
-      url.maxClicks = updateUrlDto.maxClicks;
+    
+    if (updateUrlDto.expiresAt !== undefined) {
+      url.expiresAt = updateUrlDto.expiresAt ? new Date(updateUrlDto.expiresAt) : null;
     }
 
     return this.urlRepository.save(url);

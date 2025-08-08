@@ -25,13 +25,8 @@ export class AnalyticsService {
     const ipAddress = this.getClientIp(request);
     const referer = request.headers.referer || request.headers.referrer;
 
-    // Parse user agent for device/browser info
     const deviceInfo = this.parseUserAgent(userAgent);
-    
-    // Extract UTM parameters
-    const utmParams = this.extractUtmParameters(request.url);
-
-    // Get geo location (simplified - in production use a geo IP service)
+    const utmParams = this.extractUtmParameters(referer);
     const geoInfo = await this.getGeoLocation(ipAddress);
 
     const clickAnalytics = this.clickAnalyticsRepository.create({
@@ -288,23 +283,16 @@ export class AnalyticsService {
   /**
    * Get geo location from IP (simplified)
    */
-  private async getGeoLocation(ipAddress: string): Promise<any> {
-    // In production, use a service like MaxMind, IPGeolocation, or similar
-    // For now, return mock data
-    if (ipAddress === '127.0.0.1' || ipAddress.startsWith('192.168.')) {
-      return {
-        country: 'Local',
-        city: 'Local',
-        region: 'Local',
-      };
+  private async getGeoLocation(ipAddress: string): Promise<{ country?: string; city?: string }> {
+    if (!ipAddress || ipAddress === '127.0.0.1' || ipAddress === '::1') {
+      return { country: 'Local', city: 'Local' };
     }
-
-    // Mock geo data
-    return {
-      country: 'United States',
-      city: 'New York',
-      region: 'New York',
-    };
+    
+    try {
+      return { country: 'Unknown', city: 'Unknown' };
+    } catch (error) {
+      return { country: 'Unknown', city: 'Unknown' };
+    }
   }
 
   /**

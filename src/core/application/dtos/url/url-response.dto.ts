@@ -1,38 +1,37 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UrlResponseDto {
   @ApiProperty({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'Unique identifier of the URL',
+    description: 'Identificador único da URL',
   })
   id: string;
 
   @ApiProperty({
-    example: 'https://exemplo-muito-longo.com/artigo/123',
-    description: 'Original URL',
+    description: 'URL original',
   })
   originalUrl: string;
 
   @ApiProperty({
-    example: 'abc123',
-    description: 'Short code for the URL',
+    description: 'Código curto da URL',
   })
   shortCode: string;
 
   @ApiProperty({
-    example: 'http://localhost:3000/abc123',
-    description: 'Complete shortened URL',
+    description: 'URL encurtada completa',
   })
   shortUrl: string;
 
   @ApiProperty({
-    example: 42,
-    description: 'Number of times this URL has been accessed',
+    description: 'Número de cliques',
   })
   clicks: number;
 
+  @ApiPropertyOptional({
+    description: 'Data de expiração da URL',
+  })
+  expiresAt?: Date;
+
   @ApiProperty({
-    example: '2024-01-01T00:00:00Z',
     description: 'Creation timestamp',
   })
   createdAt: Date;

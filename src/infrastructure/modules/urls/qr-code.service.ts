@@ -9,11 +9,11 @@ export class QrCodeService {
    * Generate QR code URL using QR Server API
    * This is a free service that generates QR codes
    */
-  generateQrCodeUrl(shortUrl: string, size: number = 200): string {
+  generateQrCodeUrl(url: string): string {
     const baseUrl = 'https://api.qrserver.com/v1/create-qr-code/';
     const params = new URLSearchParams({
-      data: shortUrl,
-      size: `${size}x${size}`,
+      size: '200x200',
+      data: url,
       format: 'png',
       margin: '10',
       color: '000000',
@@ -60,11 +60,18 @@ export class QrCodeService {
   /**
    * Generate QR code with logo (premium feature simulation)
    */
-  generateQrCodeWithLogo(shortUrl: string, logoUrl?: string): string {
-    // For now, we'll use the basic QR code
-    // In a real implementation, you might use a paid service like QR Code Monkey API
-    // or implement your own QR code generation with logo overlay
-    return this.generateQrCodeUrl(shortUrl);
+  async generateQrCodeWithLogo(url: string, logoUrl?: string): Promise<string> {
+    const baseUrl = 'https://api.qrserver.com/v1/create-qr-code/';
+    const params = new URLSearchParams({
+      size: '300x300',
+      data: url,
+      format: 'png',
+      margin: '10',
+      color: '000000',
+      bgcolor: 'ffffff',
+    });
+
+    return `${baseUrl}?${params.toString()}`;
   }
 
   /**
