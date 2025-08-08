@@ -1,0 +1,25 @@
+# Dockerfile otimizado para desenvolvimento
+FROM node:18-alpine
+
+# Definir diretório de trabalho
+WORKDIR /usr/src/app
+
+# Copiar arquivos de dependências
+COPY package*.json ./
+
+# Configurar npm para timeouts maiores e instalar dependências
+RUN npm config set fetch-retry-maxtimeout 600000 -g && \
+    npm config set fetch-retry-mintimeout 10000 -g && \
+    npm install --silent
+
+# Copiar código fonte
+COPY . .
+
+# Compilar aplicação
+RUN npm run build
+
+# Expor porta
+EXPOSE 3000
+
+# Comando para desenvolvimento com hot reload
+CMD ["npm", "run", "start:dev"]
