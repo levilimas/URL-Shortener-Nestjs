@@ -1,6 +1,14 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { 
+  Entity, 
+  Column, 
+  ManyToOne, 
+  JoinColumn,
+  OneToMany 
+} from 'typeorm';
+
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
+import { ClickAnalyticsEntity } from './click-analytics.entity';
 
 @Entity('urls')
 export class UrlEntity extends BaseEntity {
@@ -13,10 +21,51 @@ export class UrlEntity extends BaseEntity {
   @Column({ default: 0 })
   clicks: number;
 
+  @Column({ nullable: true })
+  description?: string;
+
+  @Column({ name: 'expires_at', nullable: true })
+  expiresAt?: Date;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'is_custom_code', default: false })
+  isCustomCode: boolean;
+
+  @Column({ name: 'qr_code_url', nullable: true })
+  qrCodeUrl?: string;
+
+  @Column({ name: 'password', nullable: true })
+  password?: string;
+
+  @Column({ name: 'max_clicks', nullable: true })
+  maxClicks?: number;
+
   @ManyToOne(() => UserEntity, (user) => user.urls, { nullable: true })
   @JoinColumn({ name: 'user_id' })
   user?: UserEntity;
 
   @Column({ name: 'user_id', nullable: true })
   userId?: string;
+
+  @OneToMany(() => ClickAnalyticsEntity, (analytics) => analytics.url)
+  analytics: ClickAnalyticsEntity[];
+
+  // Helper method to check if URL is expired
+  isExpired(): boolean {
+    if (!this.expiresAt) return false;
+    return new Date() > this.expiresAt;
+  }
+
+  // Helper method to check if URL has reached max clicks
+  hasReachedMaxClicks(): boolean {
+    if (!this.maxClicks) return false;
+    return this.clicks >= this.maxClicks;
+  }
+
+  // Helper method to check if URL is accessible
+  isAccessible(): boolean {
+    return this.isActive && !this.isExpired() && !this.hasReachedMaxClicks();
+  }
 }

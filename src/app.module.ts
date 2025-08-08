@@ -3,7 +3,7 @@ import { WinstonModule } from 'nest-winston';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+// import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { HealthModule } from './infrastructure/modules/health/health.module';
 import { AuthModule } from './infrastructure/modules/auth/auth.module';
 import { UrlsModule } from './infrastructure/modules/urls/urls.module';
@@ -15,7 +15,11 @@ import { loggerConfig } from './infrastructure/config/logger.config';
       isGlobal: true,
     }),
     WinstonModule.forRoot(loggerConfig),
-    PrometheusModule.register(),
+    // PrometheusModule.register({
+    //   defaultMetrics: {
+    //     enabled: false,
+    //   },
+    // }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

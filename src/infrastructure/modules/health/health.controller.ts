@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
+// import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter } from 'prom-client';
 
@@ -8,18 +8,19 @@ import { Counter } from 'prom-client';
 @Controller('health')
 export class HealthController {
   constructor(
-    private health: HealthCheckService,
-    private db: TypeOrmHealthIndicator,
+    // private health: HealthCheckService,
+    // private db: TypeOrmHealthIndicator,
     @InjectMetric('http_requests_total')
     private readonly httpRequestsCounter: Counter<string>,
   ) {}
 
   @Get()
-  @HealthCheck()
+  // @HealthCheck()
   check() {
-    return this.health.check([
-      () => this.db.pingCheck('database'),
-    ]);
+    return { status: 'ok', timestamp: new Date().toISOString() };
+    // return this.health.check([
+    //   () => this.db.pingCheck('database'),
+    // ]);
   }
 
   @Get('metrics')
