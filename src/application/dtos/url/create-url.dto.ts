@@ -1,56 +1,52 @@
-import { IsUrl, IsNotEmpty, IsOptional, IsString, IsDateString, IsNumber, Min, Max, IsBoolean } from 'class-validator';
+import { IsUrl, IsNotEmpty, IsOptional, IsString, IsDateString, IsNumber, Min, Max, IsBoolean, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export class CreateUrlDto {
   @ApiProperty({
-    example: 'https://www.example.com/very-long-url-that-needs-shortening',
-    description: 'The original URL to be shortened',
+    description: 'The URL to be shortened',
   })
   @IsUrl({}, { message: 'Please provide a valid URL' })
-  @IsNotEmpty({ message: 'URL cannot be empty' })
+  @IsNotEmpty({ message: 'URL is required' })
   originalUrl: string;
 
   @ApiPropertyOptional({
-    example: 'My awesome website link',
-    description: 'Optional description for the shortened URL',
+    description: 'Optional title for the URL',
   })
   @IsOptional()
   @IsString()
-  description?: string;
+  @MaxLength(255)
+  title?: string;
 
   @ApiPropertyOptional({
-    example: 'myCustomCode',
-    description: 'Custom short code (if not provided, will be auto-generated)',
-    minLength: 3,
-    maxLength: 20,
+    description: 'Custom short code (optional)',
   })
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toLowerCase())
+  @MinLength(3)
+  @MaxLength(10)
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message: 'Custom code can only contain letters, numbers, hyphens, and underscores',
+  })
   customCode?: string;
 
   @ApiPropertyOptional({
-    example: '2024-12-31T23:59:59.000Z',
-    description: 'Expiration date for the URL (ISO 8601 format)',
+    description: 'Expiration date for the URL',
   })
   @IsOptional()
   @IsDateString()
   expiresAt?: string;
 
   @ApiPropertyOptional({
-    example: 'secretPassword123',
-    description: 'Password protection for the URL',
+    description: 'Password to protect the URL',
   })
   @IsOptional()
   @IsString()
+  @MinLength(6)
   password?: string;
 
   @ApiPropertyOptional({
-    example: 1000,
     description: 'Maximum number of clicks allowed',
-    minimum: 1,
-    maximum: 1000000,
   })
   @IsOptional()
   @IsNumber()
@@ -59,18 +55,16 @@ export class CreateUrlDto {
   maxClicks?: number;
 
   @ApiPropertyOptional({
-    example: true,
-    description: 'Generate QR code for this URL',
-    default: false,
+    description: 'Whether to generate a QR code',
   })
   @IsOptional()
   @IsBoolean()
   generateQrCode?: boolean;
 
   @ApiPropertyOptional({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'User ID for authenticated requests',
+    description: 'User ID (for authenticated users)',
   })
   @IsOptional()
+  @IsUUID()
   userId?: string;
 }

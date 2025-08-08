@@ -4,6 +4,7 @@ import { UrlEntity } from './url.entity';
 import * as bcrypt from 'bcrypt';
 import { Exclude } from 'class-transformer';
 
+
 @Entity('users')
 export class UserEntity extends BaseEntity {
   @Column({ unique: true })

@@ -1,18 +1,17 @@
-import { IsUrl, IsOptional } from 'class-validator';
+import { IsUrl, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUrlDto {
   @ApiProperty({
-    example: 'https://exemplo-muito-longo.com/artigo/123',
-    description: 'The original URL to be shortened',
+    description: 'URL original a ser encurtada',
   })
-  @IsUrl({}, { message: 'Please provide a valid URL' })
+  @IsUrl({}, { message: 'Por favor, forneça uma URL válida' })
   originalUrl: string;
 
   @ApiPropertyOptional({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'User ID for authenticated requests',
+    description: 'ID do usuário (para usuários autenticados)',
   })
   @IsOptional()
+  @IsUUID()
   userId?: string;
 }

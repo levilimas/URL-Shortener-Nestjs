@@ -54,3 +54,52 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Documentation files (unnecessary)
+*.md.backup
+*.md.tmp
+docs/generated/
+docs/auto-generated/
+api-docs/
+swagger-docs/
+*.swagger.json
+*.openapi.json
+CHANGELOG.md
+En_tec.md
+README-DOCKER.md
+
+# Code documentation artifacts
+typedoc/
+jsdoc/
+*.tsdoc
+*.jsdoc
+
+# Example and template files
+*.example.*
+*.template.*
+examples/
+templates/
+sample-*
+
+# Backup and temporary documentation
+*.bak
+*.orig
+*.rej
+*~
+
+# Development and build artifacts
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Generated API documentation
+openapi.yaml
+swagger.yaml
+api-spec.json
+
+# Development notes and temporary files
+TODO.md
+NOTES.md
+DEVELOPMENT.md
+*.dev.md
+*.local.md

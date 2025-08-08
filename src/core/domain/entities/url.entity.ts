@@ -52,19 +52,15 @@ export class UrlEntity extends BaseEntity {
   @OneToMany(() => ClickAnalyticsEntity, (analytics) => analytics.url)
   analytics: ClickAnalyticsEntity[];
 
-  // Helper method to check if URL is expired
   isExpired(): boolean {
     if (!this.expiresAt) return false;
     return new Date() > this.expiresAt;
   }
 
-  // Helper method to check if URL has reached max clicks
   hasReachedMaxClicks(): boolean {
-    if (!this.maxClicks) return false;
-    return this.clicks >= this.maxClicks;
+    return false;
   }
 
-  // Helper method to check if URL is accessible
   isAccessible(): boolean {
     return this.isActive && !this.isExpired() && !this.hasReachedMaxClicks();
   }
