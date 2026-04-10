@@ -1,233 +1,206 @@
-# URL Shortener Service
+# URL Shortener — API (NestJS)
 
-## Descrição
-Serviço de encurtamento de URLs construído com NestJS que permite aos usuários criar URLs curtas e rastrear seu uso. Inclui autenticação de usuários, monitoramento e métricas.
+Serviço REST para encurtar URLs, com autenticação JWT, contagem de cliques, analytics por requisição, soft delete e documentação OpenAPI. Pensado para rodar com **PostgreSQL** e subir com **Docker Compose** (API + banco + KrakenD opcional).
 
-## Tecnologias Utilizadas
-- NestJS
-- TypeScript
-- PostgreSQL
-- TypeORM
-- JWT Authentication
-- Swagger/OpenAPI
-- Docker & Docker Compose
-- Prometheus & Grafana (Monitoramento)
-- Winston (Logging)
-- Jest (Testes)
+---
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|------------|
+| Runtime / framework | Node.js, **NestJS 10**, TypeScript |
+| Banco | **PostgreSQL 14** |
+| ORM | **TypeORM** (migrations + `synchronize` só em `development`) |
+| Auth | **JWT** (Passport) |
+| Validação / API | `class-validator`, **Swagger** (`/api/docs`) |
+| Qualidade | **ESLint 9** (flat config), **Prettier**, **Jest** |
+| Deploy local | **Docker Compose**; gateway **KrakenD 2.5** |
+| Observabilidade (opcional) | Compose de **Prometheus + Grafana** (ajuste o scrape ao endpoint real de métricas, se houver) |
+
+> **Node:** os Dockerfiles usam Node 18; o CLI do Nest 11 recomenda Node ≥ 20 — para novo ambiente, prefira **Node 20 LTS**.
+
+---
+
+## Arquitetura de pastas (visão limpa)
+
+```
+src/
+├── domain/                 # Entidades TypeORM + serviços de domínio (ex.: geração de código curto)
+├── application/dtos/       # DTOs de entrada/saída (validação + contrato da API)
+├── presentation/         # Guards e decorators HTTP (ex.: JWT, usuário atual)
+├── infrastructure/       # Config, TypeORM, migrations, módulos Nest (auth, urls, health, users)
+├── app.module.ts
+└── main.ts
+```
+
+- **Redirecionamento** do link curto fica na **raiz**: `GET /:shortCode` (fora do prefixo global `api`).
+- Demais rotas da API ficam sob **`/api/...`**.
+
+---
 
 ## Pré-requisitos
-- Docker
-- Docker Compose
-- Node.js 18+ (para desenvolvimento local)
-- npm/yarn
 
-## Instalação e Execução
+- **Docker** + **Docker Compose** (plugin `docker compose`), ou
+- **Node.js** 18+ (ideal 20+), **npm**, **PostgreSQL** acessível.
 
-### 1. Clone o repositório
+---
+
+## Configuração
+
+1. Copie o exemplo de ambiente:
+
 ```bash
-git clone https://github.com/levilimas/url-shortener-nestjs.git
-cd url-shortener-nestjs
+cp .env.example .env
 ```
 
-### 2. Configure as variáveis de ambiente
-Copie o arquivo .env.example para .env:
+2. Ajuste valores (JWT forte em produção, `URL_PREFIX` = URL pública base dos links curtos).
+
+Variáveis principais (ver [`.env.example`](.env.example)):
+
+| Variável | Descrição |
+|----------|-----------|
+| `PORT` | Porta HTTP da API (padrão 3000) |
+| `NODE_ENV` | `development` habilita `synchronize` e logs SQL do TypeORM |
+| `DB_*` | Host, porta, usuário, senha e nome do banco PostgreSQL |
+| `JWT_SECRET` / `JWT_EXPIRATION` | Assinatura e TTL do token |
+| `URL_PREFIX` | Base usada na resposta do encurtador (ex.: `http://localhost:8080` atrás do gateway) |
+
+---
+
+## Rodar localmente (sem Docker da API)
+
+Com PostgreSQL no ar e `.env` com `DB_HOST=localhost`:
+
 ```bash
-cp .env .env
-```
-
-Exemplo de configuração do .env:
-```env
-# Application
-PORT=3000
-NODE_ENV=development
-URL_PREFIX=http://localhost:3000
-
-# Database
-DB_HOST=postgres
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_DATABASE=url_shortener
-
-# JWT
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRATION=1h
-```
-
-### 3. Iniciar o ambiente
-
-#### Desenvolvimento com Docker
-```bash
-# Criar a rede Docker
-docker network create url-shortener-network
-
-# Iniciar a aplicação
-docker-compose up -d
-
-# Iniciar monitoramento (opcional)
-docker-compose -f docker-compose.monitoring.yml up -d
-```
-
-#### Desenvolvimento Local
-```bash
-# Instalar dependências
 npm install
-
-# Executar migrações
-npm run migration:run
-
-# Iniciar em modo desenvolvimento
+npm run migration:run   # recomendado em ambientes que não usam só synchronize
 npm run start:dev
 ```
 
-## Acessando a Aplicação
+- API: `http://localhost:3000/api`
+- Swagger: `http://localhost:3000/api/docs`
+- Health: `http://localhost:3000/api/system/health`
+- Redirect: `http://localhost:3000/{shortCode}`
 
-### API e Documentação
-- API: http://localhost:3000/api
-- Swagger Documentation: http://localhost:3000/api/docs
+---
 
-### Monitoramento
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3001
-  - Usuário: admin
-  - Senha: admin
+## Docker Compose (API + Postgres + KrakenD)
 
-## Endpoints Principais
+Na raiz do repositório:
+
+```bash
+docker compose up --build -d
+```
+
+- **Gateway (KrakenD):** `http://localhost:8080` — use este host no `URL_PREFIX` se os links curtos forem clicados pelo usuário final passando pelo gateway.
+- **Postgres:** porta **5432** (mapeada no host; altere com cuidado se já houver Postgres local).
+- A API escuta **3000** apenas na rede Docker (não exposta no compose “full” por padrão).
+
+Compose alternativo só **app + Postgres** (API na porta **3000** do host):
+
+```bash
+docker compose -f docker-compose.dev.yml up --build -d
+```
+
+### Monitoramento (opcional)
+
+Requer a rede `url-shortener-network` criada pelo compose principal:
+
+```bash
+docker compose up -d
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3001` (usuário padrão `admin` / senha `admin` conforme compose)
+
+> O `prometheus.yml` pode apontar para um path de métricas que ainda não existe na aplicação; ajuste o scrape quando expuser `/metrics` ou equivalente.
+
+---
+
+## Endpoints (resumo)
+
+Prefixo **`/api`** para a API REST; **exceção:** redirect na raiz.
 
 ### Autenticação
-- POST /api/auth/register - Registro de usuário
-- POST /api/auth/login - Login de usuário
+
+| Método | Caminho | Auth |
+|--------|---------|------|
+| POST | `/api/auth/register` | Não |
+| POST | `/api/auth/login` | Não |
 
 ### URLs
-- POST /api/urls - Criar URL curta (público)
-- POST /api/urls/auth - Criar URL curta (autenticado)
-- GET /api/urls/my-urls - Listar URLs do usuário
-- GET /api/:shortCode - Redirecionar para URL original
-- PUT /api/urls/:id - Atualizar URL
-- DELETE /api/urls/:id - Deletar URL
 
-### Health Check e Métricas
-- GET /api/health - Status da aplicação
-- GET /api/health/metrics - Métricas do Prometheus
+| Método | Caminho | Auth | Descrição |
+|--------|---------|------|-----------|
+| POST | `/api/shorten` | Não | Encurtar (público) |
+| POST | `/api/urls` | JWT | Encurtar vinculado ao usuário |
+| POST | `/api/urls/bulk` | JWT | Vários links |
+| GET | `/api/urls` | JWT | Listar do usuário (inclui cliques) |
+| GET | `/api/urls/:id/analytics` | JWT | Analytics da URL |
+| GET | `/api/analytics` | JWT | Analytics agregados do usuário |
+| POST | `/api/urls/:id/qr` | JWT | QR code |
+| PUT | `/api/urls/:id` | JWT | Atualizar destino / metadados |
+| DELETE | `/api/urls/:id` | JWT | Soft delete |
+| GET | `/:shortCode` | Não | Redirect 302 + contabiliza clique |
 
-## Monitoramento e Observabilidade
+### Saúde
 
-### Prometheus
-- Coleta métricas da aplicação
-- Métricas personalizadas incluem:
-  - Contagem total de requisições
-  - Duração das requisições
-  - Status das requisições
-  - Métricas do banco de dados
+| Método | Caminho | Descrição |
+|--------|---------|-----------|
+| GET | `/api/system/health` | Status básico (evita colisão com `/:shortCode` sob `/api`) |
 
-### Grafana
-- Dashboards pré-configurados para:
-  - Performance da API
-  - Métricas de URLs
-  - Métricas de usuários
-  - Status do sistema
+---
 
-### Logs
-- Logs de desenvolvimento: Console
-- Logs de produção: Arquivos em /logs
-  - error.log: Apenas erros
-  - combined.log: Todos os logs
+## Migrations
 
-## API Gateway (KrakenD)
-
-O projeto utiliza KrakenD como API Gateway, proporcionando:
-- Rate limiting
-- Caching
-- CORS
-- Métricas
-- Logging
-- Validação de JWT
-
-### Endpoints do Gateway
-Todos os endpoints da API são acessíveis através do gateway na porta 8080:
-- API Gateway: http://localhost:8080
-- Métricas do Gateway: http://localhost:8090
-
-### Configuração
-A configuração do KrakenD está localizada em `gateway/krakend/krakend.json`
-
-### Recursos do Gateway
-- Cache de respostas (TTL: 1 hora)
-- Timeout global de 3 segundos
-- CORS configurado para desenvolvimento
-- Métricas expostas na porta 8090
-- Logs formatados
-- Validação de JWT para rotas autenticadas
-
-## Testes
 ```bash
-# Executar testes unitários
+npm run migration:run
+npm run migration:revert
+npm run migration:generate -- src/infrastructure/database/migrations/NomeDaMigration
+```
+
+Em `NODE_ENV=development`, o TypeORM pode usar **`synchronize: true`** (útil no Docker de dev); em produção use **migrations** e `synchronize: false`.
+
+---
+
+## Testes e lint
+
+```bash
 npm run test
-
-# Executar testes com coverage
 npm run test:cov
-
-# Executar testes e2e
-npm run test:e2e
+npm run test:e2e    # requer API + Postgres conforme ambiente do teste
+npm run lint
+npm run format
 ```
 
-## Comandos Docker Úteis
-```bash
-# Parar todos os serviços
-docker-compose down
-docker-compose -f docker-compose.monitoring.yml down
+---
 
-# Ver logs
-docker-compose logs -f api
+## KrakenD
 
-# Reiniciar serviço específico
-docker-compose restart api
+Configuração: [`gateway/krakend/krakend.json`](gateway/krakend/krakend.json).  
+Dockerfile: [`gateway/Dockerfile`](gateway/Dockerfile).
 
-# Limpar volumes
-docker-compose down -v
-```
+Hoje o gateway faz principalmente **proxy**, **CORS** e **métricas** do próprio KrakenD (porta 8090). A **validação JWT** das rotas protegidas continua na **API Nest**.
 
-## Estrutura do Projeto
-```
-url-shortener-nestjs/
-├── docker/
-│   ├── development/
-│   │   └── Dockerfile
-│   └── production/
-│       └── Dockerfile
-├── monitoring/
-│   ├── prometheus/
-│   │   └── prometheus.yml
-│   └── grafana/
-│       └── provisioning/
-├── src/
-│   ├── core/
-│   │   ├── application/
-│   │   ├── domain/
-│   │   └── shared/
-│   ├── infrastructure/
-│   │   ├── config/
-│   │   ├── database/
-│   │   └── modules/
-│   └── main.ts
-├── test/
-├── docker-compose.yml
-├── docker-compose.monitoring.yml
-└── README.md
-```
+---
 
-## Contribuindo
-1. Faça o fork do projeto
-2. Crie sua feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit suas mudanças (`git commit -m 'Add some amazing feature'`)
-4. Push para a branch (`git push origin feature/amazing-feature`)
-5. Abra um Pull Request
+## Escala horizontal (lembrete para produção)
 
-## Pontos de Melhoria
- ### Como o projeto ainda não está como deveria, pretendo acrescentar os seguintes tópicos nos próximos dias
-- Implementar cache com Redis
-- Adicionar rate limiting
-- Implementar sistema de filas
-- Melhorar cobertura de testes
-- Adicionar mais métricas e dashboards
-- Implementar CI/CD
+- **Estado:** JWT stateless ajuda; **banco e filas** viram gargalo antes da API.
+- **Redirect:** tráfego alto em `GET /:shortCode` — cache HTTP (CDN / edge) ou cache do destino por `shortCode` reduz carga no banco.
+- **Geração de código:** índice único em `shortCode`; colisão tratada com retry; em escala muito alta, avaliar sequência + base62 ou alocação em lote.
+- **Analytics:** escrita por clique — particionar por tempo, fila assíncrona ou agregação em batch.
+- **Gateway:** rate limiting, WAF e TLS no edge (KrakenD, API Gateway gerenciado ou reverse proxy).
+
+---
+
+## Documentação extra
+
+- [Perguntas de entrevista — Pleno e Sênior](docs/PERGUNTAS_ENTREVISTA.md) (roteiro de estudo e raciocínio de engenharia).
+
+---
+
+## Licença
+
+UNLICENSED (projeto privado; ajuste conforme necessidade).
