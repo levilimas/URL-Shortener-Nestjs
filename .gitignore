@@ -103,3 +103,4 @@ NOTES.md
 DEVELOPMENT.md
 *.dev.md
 *.local.md
+database.sqlite
