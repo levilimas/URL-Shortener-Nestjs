@@ -1,38 +1,35 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UrlEntity } from '../../../core/domain/entities/url.entity';
+import { UrlEntity } from '../../../domain/entities/url.entity';
 import { CreateUrlDto } from '../../../application/dtos/url/create-url.dto';
 import { UpdateUrlDto } from '../../../application/dtos/url/update-url.dto';
 import { BulkCreateUrlDto } from '../../../application/dtos/url/bulk-create-url.dto';
 import { ConfigService } from '@nestjs/config';
 import { QrCodeService } from './qr-code.service';
 import { AnalyticsService } from './analytics.service';
+import { generateShortCode } from '../../../domain/services/short-code.generator';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UrlsService {
-  private generateShortCode: () => string;
-
   constructor(
     @InjectRepository(UrlEntity)
     private urlRepository: Repository<UrlEntity>,
     private configService: ConfigService,
     private qrCodeService: QrCodeService,
     private analyticsService: AnalyticsService,
-  ) {
-    this.initializeNanoid();
-  }
+  ) {}
 
-  private async initializeNanoid() {
-    const nanoid = await import('nanoid');
-    this.generateShortCode = nanoid.customAlphabet(
-      '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
-      6
-    );
-  }
-
-  async create(createUrlDto: CreateUrlDto, userId?: string): Promise<UrlEntity> {
+  async create(
+    createUrlDto: CreateUrlDto,
+    userId?: string,
+  ): Promise<UrlEntity> {
     let shortCode: string;
     let isCustomCode = false;
 
@@ -79,7 +76,10 @@ export class UrlsService {
     return savedUrl;
   }
 
-  async createBulk(bulkCreateUrlDto: BulkCreateUrlDto, userId?: string): Promise<any> {
+  async createBulk(
+    bulkCreateUrlDto: BulkCreateUrlDto,
+    userId?: string,
+  ): Promise<any> {
     const results = {
       successCount: 0,
       errorCount: 0,
@@ -106,14 +106,17 @@ export class UrlsService {
 
   async findAll(userId: string): Promise<UrlEntity[]> {
     return this.urlRepository.find({
-      where: { userId, deletedAt: null },
+      where: { userId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findByShortCode(shortCode: string, password?: string): Promise<UrlEntity> {
+  async findByShortCode(
+    shortCode: string,
+    password?: string,
+  ): Promise<UrlEntity> {
     const url = await this.urlRepository.findOne({
-      where: { shortCode, deletedAt: null },
+      where: { shortCode },
     });
 
     if (!url) {
@@ -133,7 +136,7 @@ export class UrlsService {
       if (!password) {
         throw new BadRequestException('Password required');
       }
-      
+
       const isPasswordValid = await bcrypt.compare(password, url.password);
       if (!isPasswordValid) {
         throw new BadRequestException('Invalid password');
@@ -143,9 +146,13 @@ export class UrlsService {
     return url;
   }
 
-  async update(id: string, userId: string, updateUrlDto: UpdateUrlDto): Promise<UrlEntity> {
+  async update(
+    id: string,
+    userId: string,
+    updateUrlDto: UpdateUrlDto,
+  ): Promise<UrlEntity> {
     const url = await this.urlRepository.findOne({
-      where: { id, userId, deletedAt: null },
+      where: { id, userId },
     });
 
     if (!url) {
@@ -155,17 +162,19 @@ export class UrlsService {
     if (updateUrlDto.originalUrl) {
       url.originalUrl = updateUrlDto.originalUrl;
     }
-    
+
     if (updateUrlDto.description !== undefined) {
       url.description = updateUrlDto.description;
     }
-    
+
     if (updateUrlDto.isActive !== undefined) {
       url.isActive = updateUrlDto.isActive;
     }
-    
+
     if (updateUrlDto.expiresAt !== undefined) {
-      url.expiresAt = updateUrlDto.expiresAt ? new Date(updateUrlDto.expiresAt) : null;
+      url.expiresAt = updateUrlDto.expiresAt
+        ? new Date(updateUrlDto.expiresAt)
+        : null;
     }
 
     return this.urlRepository.save(url);
@@ -173,40 +182,37 @@ export class UrlsService {
 
   async delete(id: string, userId: string): Promise<void> {
     const url = await this.urlRepository.findOne({
-      where: { id, userId, deletedAt: null },
+      where: { id, userId },
     });
 
     if (!url) {
       throw new NotFoundException('URL not found or not owned by user');
     }
 
-    url.deletedAt = new Date();
-    await this.urlRepository.save(url);
+    await this.urlRepository.softRemove(url);
   }
 
   async incrementClicks(shortCode: string, request?: any): Promise<void> {
     const url = await this.urlRepository.findOne({
-      where: { shortCode, deletedAt: null },
+      where: { shortCode },
     });
 
     if (url) {
-      // Record analytics if request is provided
       if (request) {
         await this.analyticsService.recordClick(url.id, request);
       }
 
-      // Increment click count
-      await this.urlRepository.increment(
-        { shortCode, deletedAt: null },
-        'clicks',
-        1
-      );
+      await this.urlRepository.increment({ id: url.id }, 'clicks', 1);
     }
   }
 
-  async getAnalytics(id: string, userId: string, days: number = 30): Promise<any> {
+  async getAnalytics(
+    id: string,
+    userId: string,
+    days: number = 30,
+  ): Promise<any> {
     const url = await this.urlRepository.findOne({
-      where: { id, userId, deletedAt: null },
+      where: { id, userId },
     });
 
     if (!url) {
@@ -220,9 +226,13 @@ export class UrlsService {
     return this.analyticsService.getUserAnalytics(userId, days);
   }
 
-  async generateQrCode(id: string, userId: string, options: any = {}): Promise<string> {
+  async generateQrCode(
+    id: string,
+    userId: string,
+    options: any = {},
+  ): Promise<string> {
     const url = await this.urlRepository.findOne({
-      where: { id, userId, deletedAt: null },
+      where: { id, userId },
     });
 
     if (!url) {
@@ -230,9 +240,11 @@ export class UrlsService {
     }
 
     const shortUrl = this.getShortUrl(url.shortCode);
-    const qrCodeUrl = this.qrCodeService.generateStyledQrCodeUrl(shortUrl, options);
+    const qrCodeUrl = this.qrCodeService.generateStyledQrCodeUrl(
+      shortUrl,
+      options,
+    );
 
-    // Update URL with QR code URL
     url.qrCodeUrl = qrCodeUrl;
     await this.urlRepository.save(url);
 
@@ -240,49 +252,61 @@ export class UrlsService {
   }
 
   getShortUrl(shortCode: string): string {
-    const baseUrl = this.configService.get<string>('URL_PREFIX', 'http://localhost:3000');
+    const baseUrl = this.configService.get<string>(
+      'URL_PREFIX',
+      'http://localhost:3000',
+    );
     return `${baseUrl}/${shortCode}`;
   }
 
   private async validateCustomCode(customCode: string): Promise<void> {
-    // Check if custom code is already taken
     const existingUrl = await this.urlRepository.findOne({
-      where: { shortCode: customCode, deletedAt: null },
+      where: { shortCode: customCode },
     });
 
     if (existingUrl) {
       throw new ConflictException('Custom code is already taken');
     }
 
-    // Validate custom code format
     if (!/^[a-zA-Z0-9_-]+$/.test(customCode)) {
-      throw new BadRequestException('Custom code can only contain letters, numbers, hyphens, and underscores');
+      throw new BadRequestException(
+        'Custom code can only contain letters, numbers, hyphens, and underscores',
+      );
     }
 
     if (customCode.length < 3 || customCode.length > 20) {
-      throw new BadRequestException('Custom code must be between 3 and 20 characters');
+      throw new BadRequestException(
+        'Custom code must be between 3 and 20 characters',
+      );
     }
 
-    // Check against reserved words
-    const reservedWords = ['api', 'admin', 'www', 'app', 'dashboard', 'analytics', 'qr'];
+    const reservedWords = [
+      'api',
+      'admin',
+      'www',
+      'app',
+      'dashboard',
+      'analytics',
+      'qr',
+    ];
     if (reservedWords.includes(customCode.toLowerCase())) {
       throw new BadRequestException('Custom code is reserved');
     }
   }
 
   private async generateUniqueShortCode(): Promise<string> {
-    let shortCode: string;
+    let code: string;
     let attempts = 0;
     const maxAttempts = 10;
 
     do {
-      shortCode = this.generateShortCode();
-      const existingUrl = await this.urlRepository.findOne({
-        where: { shortCode, deletedAt: null },
+      code = generateShortCode();
+      const existing = await this.urlRepository.findOne({
+        where: { shortCode: code },
       });
 
-      if (!existingUrl) {
-        return shortCode;
+      if (!existing) {
+        return code;
       }
 
       attempts++;

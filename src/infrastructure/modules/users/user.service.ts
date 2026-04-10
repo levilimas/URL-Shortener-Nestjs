@@ -1,7 +1,7 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserEntity } from '../../../core/domain/entities/user.entity';
+import { UserEntity } from '../../../domain/entities/user.entity';
 import { RegisterDto } from '../../../application/dtos/auth/register.dto';
 
 @Injectable()

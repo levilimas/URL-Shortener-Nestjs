@@ -67,21 +67,13 @@
         ]
       },
       {
-        "endpoint": "/api/urls/my-urls",
+        "endpoint": "/api/urls",
         "method": "GET",
         "output_encoding": "json",
-        "extra_config": {
-          "auth/validator": {
-            "alg": "HS256",
-            "roles": ["user"],
-            "jwk_local_path": "public.json",
-            "disable_jwk_security": true,
-            "operation_debug": true
-          }
-        },
+        "input_headers": ["Authorization"],
         "backend": [
           {
-            "url_pattern": "/api/urls/my-urls",
+            "url_pattern": "/api/urls",
             "encoding": "json",
             "method": "GET",
             "host": ["http://api:3000"]
@@ -89,25 +81,25 @@
         ]
       },
       {
-        "endpoint": "/api/health",
-        "method": "GET",
+        "endpoint": "/api/shorten",
+        "method": "POST",
         "output_encoding": "json",
         "backend": [
           {
-            "url_pattern": "/api/health",
+            "url_pattern": "/api/shorten",
             "encoding": "json",
-            "method": "GET",
+            "method": "POST",
             "host": ["http://api:3000"]
           }
         ]
       },
       {
-        "endpoint": "/api/health/metrics",
+        "endpoint": "/api/system/health",
         "method": "GET",
         "output_encoding": "json",
         "backend": [
           {
-            "url_pattern": "/api/health/metrics",
+            "url_pattern": "/api/system/health",
             "encoding": "json",
             "method": "GET",
             "host": ["http://api:3000"]

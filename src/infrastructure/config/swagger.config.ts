@@ -4,19 +4,14 @@ import { INestApplication } from '@nestjs/common';
 export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
     .setTitle('URL Shortener API')
-    .setDescription('API for shortening URLs with user authentication')
+    .setDescription(
+      'API for shortening URLs with user authentication and click analytics',
+    )
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
     .addTag('urls', 'URL shortening operations')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Enter JWT token',
-      },
-      'JWT',
-    )
+    .addTag('redirect', 'URL redirection')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
