@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ClickAnalyticsEntity } from '../../../core/domain/entities/click-analytics.entity';
-import { UrlEntity } from '../../../core/domain/entities/url.entity';
-import { UrlAnalyticsDto, ClickAnalyticsDto } from '../../../application/dtos/url/analytics.dto';
+import { Repository, MoreThanOrEqual } from 'typeorm';
+import { ClickAnalyticsEntity } from '../../../domain/entities/click-analytics.entity';
+import { UrlEntity } from '../../../domain/entities/url.entity';
+import { UrlAnalyticsDto } from '../../../application/dtos/url/analytics.dto';
 
 @Injectable()
 export class AnalyticsService {
@@ -23,29 +23,24 @@ export class AnalyticsService {
   ): Promise<ClickAnalyticsEntity> {
     const userAgent = request.headers['user-agent'] || '';
     const ipAddress = this.getClientIp(request);
-    const referer = request.headers.referer || request.headers.referrer;
-
-    const deviceInfo = this.parseUserAgent(userAgent);
-    const utmParams = this.extractUtmParameters(referer);
-    const geoInfo = await this.getGeoLocation(ipAddress);
 
     const clickAnalytics = this.clickAnalyticsRepository.create({
       urlId,
-      ipAddress: this.getClientIp(request),
-      userAgent: request.headers['user-agent'] || '',
-      country: this.extractCountryFromIp(this.getClientIp(request)),
-      city: this.extractCityFromIp(this.getClientIp(request)),
-      device: this.extractDeviceInfo(request.headers['user-agent'] || ''),
-      browser: this.extractBrowserInfo(request.headers['user-agent'] || ''),
-      operatingSystem: this.extractOSInfo(request.headers['user-agent'] || ''),
-      referer: request.headers.referer || null,
-      utmSource: request.query?.utm_source as string || null,
-      utmMedium: request.query?.utm_medium as string || null,
-      utmCampaign: request.query?.utm_campaign as string || null,
-      utmTerm: request.query?.utm_term as string || null,
-      utmContent: request.query?.utm_content as string || null,
-      isMobile: this.isMobileDevice(request.headers['user-agent'] || ''),
-      isBot: this.isBotUserAgent(request.headers['user-agent'] || ''),
+      ipAddress,
+      userAgent,
+      country: this.extractCountryFromIp(ipAddress),
+      city: this.extractCityFromIp(ipAddress),
+      device: this.extractDeviceInfo(userAgent),
+      browser: this.extractBrowserInfo(userAgent),
+      operatingSystem: this.extractOSInfo(userAgent),
+      referer: request.headers.referer || request.headers.referrer || null,
+      utmSource: (request.query?.utm_source as string) || null,
+      utmMedium: (request.query?.utm_medium as string) || null,
+      utmCampaign: (request.query?.utm_campaign as string) || null,
+      utmTerm: (request.query?.utm_term as string) || null,
+      utmContent: (request.query?.utm_content as string) || null,
+      isMobile: this.isMobileDevice(userAgent),
+      isBot: this.isBotUserAgent(userAgent),
     });
 
     return this.clickAnalyticsRepository.save(clickAnalytics);
@@ -113,7 +108,9 @@ export class AnalyticsService {
    * Check if device is mobile
    */
   private isMobileDevice(userAgent: string): boolean {
-    return /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    return /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      userAgent,
+    );
   }
 
   /**
@@ -136,17 +133,15 @@ export class AnalyticsService {
     const clicks = await this.clickAnalyticsRepository.find({
       where: {
         urlId,
-        createdAt: {
-          $gte: startDate,
-        } as any,
+        createdAt: MoreThanOrEqual(startDate),
       },
       order: { createdAt: 'DESC' },
     });
 
     const totalClicks = clicks.length;
-    const uniqueClicks = clicks.filter(click => !click.isBot).length;
-    const botClicks = clicks.filter(click => click.isBot).length;
-    const mobileClicks = clicks.filter(click => click.isMobile).length;
+    const uniqueClicks = clicks.filter((click) => !click.isBot).length;
+    const botClicks = clicks.filter((click) => click.isBot).length;
+    const mobileClicks = clicks.filter((click) => click.isMobile).length;
     const desktopClicks = totalClicks - mobileClicks;
 
     // Group by various dimensions
@@ -157,7 +152,7 @@ export class AnalyticsService {
     const clicksByDate = this.groupByDate(clicks);
 
     // Get recent clicks (last 10)
-    const recentClicks = clicks.slice(0, 10).map(click => ({
+    const recentClicks = clicks.slice(0, 10).map((click) => ({
       id: click.id,
       createdAt: click.createdAt,
       country: click.country,
@@ -209,7 +204,7 @@ export class AnalyticsService {
     const topUrls = userUrls
       .sort((a, b) => b.clicks - a.clicks)
       .slice(0, 10)
-      .map(url => ({
+      .map((url) => ({
         id: url.id,
         shortCode: url.shortCode,
         originalUrl: url.originalUrl,
@@ -240,62 +235,6 @@ export class AnalyticsService {
   }
 
   /**
-   * Parse user agent string
-   */
-  private parseUserAgent(userAgent: string): any {
-    const isMobile = /Mobile|Android|iPhone|iPad/.test(userAgent);
-    const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
-    
-    let browser = 'Unknown';
-    let os = 'Unknown';
-    let device = isMobile ? 'Mobile' : 'Desktop';
-
-    // Simple browser detection
-    if (userAgent.includes('Chrome')) browser = 'Chrome';
-    else if (userAgent.includes('Firefox')) browser = 'Firefox';
-    else if (userAgent.includes('Safari')) browser = 'Safari';
-    else if (userAgent.includes('Edge')) browser = 'Edge';
-
-    // Simple OS detection
-    if (userAgent.includes('Windows')) os = 'Windows';
-    else if (userAgent.includes('Mac')) os = 'macOS';
-    else if (userAgent.includes('Linux')) os = 'Linux';
-    else if (userAgent.includes('Android')) os = 'Android';
-    else if (userAgent.includes('iOS')) os = 'iOS';
-
-    return { browser, os, device, isMobile, isBot };
-  }
-
-  /**
-   * Extract UTM parameters from URL
-   */
-  private extractUtmParameters(url: string): any {
-    const urlObj = new URL(url, 'http://localhost');
-    return {
-      utmSource: urlObj.searchParams.get('utm_source'),
-      utmMedium: urlObj.searchParams.get('utm_medium'),
-      utmCampaign: urlObj.searchParams.get('utm_campaign'),
-      utmTerm: urlObj.searchParams.get('utm_term'),
-      utmContent: urlObj.searchParams.get('utm_content'),
-    };
-  }
-
-  /**
-   * Get geo location from IP (simplified)
-   */
-  private async getGeoLocation(ipAddress: string): Promise<{ country?: string; city?: string }> {
-    if (!ipAddress || ipAddress === '127.0.0.1' || ipAddress === '::1') {
-      return { country: 'Local', city: 'Local' };
-    }
-    
-    try {
-      return { country: 'Unknown', city: 'Unknown' };
-    } catch (error) {
-      return { country: 'Unknown', city: 'Unknown' };
-    }
-  }
-
-  /**
    * Group array by field
    */
   private groupBy(array: any[], field: string): Record<string, number> {
@@ -309,30 +248,38 @@ export class AnalyticsService {
   /**
    * Group by referrer domain
    */
-  private groupByReferrer(clicks: ClickAnalyticsEntity[]): Record<string, number> {
-    return clicks.reduce((acc, click) => {
-      let referrer = 'Direct';
-      if (click.referer) {
-        try {
-          const url = new URL(click.referer);
-          referrer = url.hostname;
-        } catch {
-          referrer = 'Unknown';
+  private groupByReferrer(
+    clicks: ClickAnalyticsEntity[],
+  ): Record<string, number> {
+    return clicks.reduce(
+      (acc, click) => {
+        let referrer = 'Direct';
+        if (click.referer) {
+          try {
+            const url = new URL(click.referer);
+            referrer = url.hostname;
+          } catch {
+            referrer = 'Unknown';
+          }
         }
-      }
-      acc[referrer] = (acc[referrer] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+        acc[referrer] = (acc[referrer] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   }
 
   /**
    * Group by date
    */
   private groupByDate(clicks: ClickAnalyticsEntity[]): Record<string, number> {
-    return clicks.reduce((acc, click) => {
-      const date = click.createdAt.toISOString().split('T')[0];
-      acc[date] = (acc[date] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    return clicks.reduce(
+      (acc, click) => {
+        const date = click.createdAt.toISOString().split('T')[0];
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   }
 }

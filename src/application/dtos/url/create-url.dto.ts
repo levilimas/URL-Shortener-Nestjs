@@ -1,4 +1,18 @@
-import { IsUrl, IsNotEmpty, IsOptional, IsString, IsDateString, IsNumber, Min, Max, IsBoolean, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsUrl,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsNumber,
+  Min,
+  Max,
+  IsBoolean,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
@@ -26,7 +40,8 @@ export class CreateUrlDto {
   @MinLength(3)
   @MaxLength(10)
   @Matches(/^[a-zA-Z0-9_-]+$/, {
-    message: 'Custom code can only contain letters, numbers, hyphens, and underscores',
+    message:
+      'Custom code can only contain letters, numbers, hyphens, and underscores',
   })
   customCode?: string;
 

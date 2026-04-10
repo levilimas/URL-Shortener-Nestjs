@@ -1,15 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { UrlsService } from './urls.service';
-import { UrlEntity } from '../../../core/domain/entities/url.entity';
+import { QrCodeService } from './qr-code.service';
+import { AnalyticsService } from './analytics.service';
+import { UrlEntity } from '../../../domain/entities/url.entity';
 import { NotFoundException } from '@nestjs/common';
 
 describe('UrlsService', () => {
   let service: UrlsService;
-  let repository: Repository<UrlEntity>;
-  let configService: ConfigService;
 
   const mockRepository = {
     create: jest.fn(),
@@ -17,13 +16,27 @@ describe('UrlsService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     increment: jest.fn(),
+    softRemove: jest.fn(),
   };
 
   const mockConfigService = {
     get: jest.fn(),
   };
 
+  const mockQrCodeService = {
+    generateQrCodeUrl: jest.fn(),
+    generateStyledQrCodeUrl: jest.fn(),
+  };
+
+  const mockAnalyticsService = {
+    recordClick: jest.fn(),
+    getUrlAnalytics: jest.fn(),
+    getUserAnalytics: jest.fn(),
+  };
+
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UrlsService,
@@ -35,12 +48,18 @@ describe('UrlsService', () => {
           provide: ConfigService,
           useValue: mockConfigService,
         },
+        {
+          provide: QrCodeService,
+          useValue: mockQrCodeService,
+        },
+        {
+          provide: AnalyticsService,
+          useValue: mockAnalyticsService,
+        },
       ],
     }).compile();
 
     service = module.get<UrlsService>(UrlsService);
-    repository = module.get<Repository<UrlEntity>>(getRepositoryToken(UrlEntity));
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   it('should be defined', () => {
@@ -49,10 +68,7 @@ describe('UrlsService', () => {
 
   describe('create', () => {
     it('should create a new shortened URL', async () => {
-      const createUrlDto = {
-        originalUrl: 'https://example.com/long-url',
-      };
-
+      const createUrlDto = { originalUrl: 'https://example.com/long-url' };
       const newUrl = {
         id: '1',
         originalUrl: createUrlDto.originalUrl,
@@ -60,6 +76,7 @@ describe('UrlsService', () => {
         clicks: 0,
       };
 
+      mockRepository.findOne.mockResolvedValue(null);
       mockRepository.create.mockReturnValue(newUrl);
       mockRepository.save.mockResolvedValue(newUrl);
 
@@ -72,17 +89,18 @@ describe('UrlsService', () => {
   });
 
   describe('findByShortCode', () => {
-    it('should return URL when found', async () => {
+    it('should return URL when found and accessible', async () => {
       const url = {
         id: '1',
         originalUrl: 'https://example.com',
         shortCode: 'abc123',
+        isAccessible: () => true,
+        password: null,
       };
 
       mockRepository.findOne.mockResolvedValue(url);
 
       const result = await service.findByShortCode('abc123');
-
       expect(result).toEqual(url);
     });
 
@@ -96,13 +114,45 @@ describe('UrlsService', () => {
   });
 
   describe('incrementClicks', () => {
-    it('should increment clicks counter', async () => {
-      await service.incrementClicks('abc123');
+    it('should increment clicks counter and record analytics', async () => {
+      const url = { id: 'url-1', shortCode: 'abc123' };
+      const mockRequest = {
+        headers: { 'user-agent': 'test-agent' },
+        ip: '127.0.0.1',
+      };
 
+      mockRepository.findOne.mockResolvedValue(url);
+
+      await service.incrementClicks('abc123', mockRequest);
+
+      expect(mockAnalyticsService.recordClick).toHaveBeenCalledWith(
+        'url-1',
+        mockRequest,
+      );
       expect(mockRepository.increment).toHaveBeenCalledWith(
-        { shortCode: 'abc123', deletedAt: null },
+        { id: 'url-1' },
         'clicks',
         1,
+      );
+    });
+  });
+
+  describe('delete', () => {
+    it('should soft delete a URL owned by the user', async () => {
+      const url = { id: '1', userId: 'user-1' };
+      mockRepository.findOne.mockResolvedValue(url);
+      mockRepository.softRemove.mockResolvedValue(url);
+
+      await service.delete('1', 'user-1');
+
+      expect(mockRepository.softRemove).toHaveBeenCalledWith(url);
+    });
+
+    it('should throw NotFoundException if URL not found', async () => {
+      mockRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.delete('999', 'user-1')).rejects.toThrow(
+        NotFoundException,
       );
     });
   });
@@ -112,7 +162,6 @@ describe('UrlsService', () => {
       mockConfigService.get.mockReturnValue('http://localhost:3000');
 
       const result = service.getShortUrl('abc123');
-
       expect(result).toBe('http://localhost:3000/abc123');
     });
   });

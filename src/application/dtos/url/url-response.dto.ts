@@ -67,7 +67,8 @@ export class UrlResponseDto {
   hasReachedMaxClicks: boolean;
 
   @ApiProperty({
-    description: 'Whether the URL is accessible (active, not expired, not at max clicks)',
+    description:
+      'Whether the URL is accessible (active, not expired, not at max clicks)',
   })
   isAccessible: boolean;
 

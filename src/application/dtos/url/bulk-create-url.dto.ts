@@ -1,4 +1,9 @@
-import { IsArray, ValidateNested, ArrayMaxSize, ArrayMinSize } from 'class-validator';
+import {
+  IsArray,
+  ValidateNested,
+  ArrayMaxSize,
+  ArrayMinSize,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { CreateUrlDto } from './create-url.dto';

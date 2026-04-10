@@ -1,4 +1,12 @@
-import { IsUrl, IsOptional, IsString, IsDateString, IsBoolean, IsInt, Min } from 'class-validator';
+import {
+  IsUrl,
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsBoolean,
+  IsInt,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateUrlDto {

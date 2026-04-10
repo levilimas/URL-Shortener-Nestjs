@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UrlsController } from './urls.controller';
+import { RedirectController } from './redirect.controller';
 import { UrlsService } from './urls.service';
 import { QrCodeService } from './qr-code.service';
 import { AnalyticsService } from './analytics.service';
-import { UrlEntity } from '../../../core/domain/entities/url.entity';
-import { ClickAnalyticsEntity } from '../../../core/domain/entities/click-analytics.entity';
+import { UrlEntity } from '../../../domain/entities/url.entity';
+import { ClickAnalyticsEntity } from '../../../domain/entities/click-analytics.entity';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
@@ -13,7 +14,7 @@ import { ConfigModule } from '@nestjs/config';
     TypeOrmModule.forFeature([UrlEntity, ClickAnalyticsEntity]),
     ConfigModule,
   ],
-  controllers: [UrlsController],
+  controllers: [UrlsController, RedirectController],
   providers: [UrlsService, QrCodeService, AnalyticsService],
   exports: [UrlsService, QrCodeService, AnalyticsService],
 })

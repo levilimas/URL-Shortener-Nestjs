@@ -5,10 +5,6 @@ import { ConfigService } from '@nestjs/config';
 export class QrCodeService {
   constructor(private configService: ConfigService) {}
 
-  /**
-   * Generate QR code URL using QR Server API
-   * This is a free service that generates QR codes
-   */
   generateQrCodeUrl(url: string): string {
     const baseUrl = 'https://api.qrserver.com/v1/create-qr-code/';
     const params = new URLSearchParams({
@@ -23,9 +19,6 @@ export class QrCodeService {
     return `${baseUrl}?${params.toString()}`;
   }
 
-  /**
-   * Generate QR code URL with custom styling
-   */
   generateStyledQrCodeUrl(
     shortUrl: string,
     options: {
@@ -57,9 +50,6 @@ export class QrCodeService {
     return `${baseUrl}?${params.toString()}`;
   }
 
-  /**
-   * Generate QR code with logo (premium feature simulation)
-   */
   async generateQrCodeWithLogo(url: string, logoUrl?: string): Promise<string> {
     const baseUrl = 'https://api.qrserver.com/v1/create-qr-code/';
     const params = new URLSearchParams({
@@ -74,9 +64,7 @@ export class QrCodeService {
     return `${baseUrl}?${params.toString()}`;
   }
 
-  /**
-   * Validate QR code parameters
-   */
+
   validateQrCodeOptions(options: any): boolean {
     const { size, color, bgcolor } = options;
 

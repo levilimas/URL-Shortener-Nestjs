@@ -1,9 +1,5 @@
-import { 
-  Entity, 
-  Column, 
-  ManyToOne, 
-  JoinColumn,
-  OneToMany 
+import {
+ Entity, Column, ManyToOne, JoinColumn, OneToMany 
 } from 'typeorm';
 
 import { BaseEntity } from './base.entity';
@@ -58,7 +54,8 @@ export class UrlEntity extends BaseEntity {
   }
 
   hasReachedMaxClicks(): boolean {
-    return false;
+    if (!this.maxClicks) return false;
+    return this.clicks >= this.maxClicks;
   }
 
   isAccessible(): boolean {
