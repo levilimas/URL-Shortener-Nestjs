@@ -1,4 +1,10 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
   postgres:
     container_name: url-shortener-db-dev
     image: postgres:14-alpine
@@ -34,12 +40,18 @@ services:
       DB_DATABASE: url_shortener
       JWT_SECRET: your_jwt_secret_key_here
       URL_PREFIX: http://localhost:3000
+      REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      PGBOSS_ENABLED: "true"
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     command: ["npm", "run", "start:dev"]
 
 volumes:

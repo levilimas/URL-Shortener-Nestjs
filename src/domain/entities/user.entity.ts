@@ -1,5 +1,8 @@
 import {
- Entity, Column, OneToMany, BeforeInsert 
+ Entity, 
+ Column, 
+ OneToMany, 
+ BeforeInsert 
 } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { UrlEntity } from './url.entity';

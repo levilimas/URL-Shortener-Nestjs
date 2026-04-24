@@ -3,7 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { UrlsService } from './urls.service';
 import { QrCodeService } from './qr-code.service';
-import { AnalyticsService } from './analytics.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { PgBossService } from '../../queue/pg-boss.service';
+import { RedisService } from '../../redis/redis.service';
 import { UrlEntity } from '../../../domain/entities/url.entity';
 import { NotFoundException } from '@nestjs/common';
 
@@ -30,8 +32,29 @@ describe('UrlsService', () => {
 
   const mockAnalyticsService = {
     recordClick: jest.fn(),
+    buildClickSnapshot: jest.fn().mockReturnValue({
+      ipAddress: '127.0.0.1',
+      userAgent: 'test-agent',
+      referer: null,
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      utmTerm: null,
+      utmContent: null,
+    }),
     getUrlAnalytics: jest.fn(),
     getUserAnalytics: jest.fn(),
+  };
+
+  const mockPgBossService = {
+    enqueueClickAnalytics: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockRedisService = {
+    isReady: jest.fn().mockReturnValue(false),
+    get: jest.fn(),
+    setex: jest.fn(),
+    del: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -55,6 +78,14 @@ describe('UrlsService', () => {
         {
           provide: AnalyticsService,
           useValue: mockAnalyticsService,
+        },
+        {
+          provide: PgBossService,
+          useValue: mockPgBossService,
+        },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
         },
       ],
     }).compile();
@@ -125,15 +156,21 @@ describe('UrlsService', () => {
 
       await service.incrementClicks('abc123', mockRequest);
 
-      expect(mockAnalyticsService.recordClick).toHaveBeenCalledWith(
-        'url-1',
-        mockRequest,
-      );
       expect(mockRepository.increment).toHaveBeenCalledWith(
         { id: 'url-1' },
         'clicks',
         1,
       );
+      expect(mockAnalyticsService.buildClickSnapshot).toHaveBeenCalledWith(
+        mockRequest,
+      );
+      expect(mockPgBossService.enqueueClickAnalytics).toHaveBeenCalledWith({
+        urlId: 'url-1',
+        snapshot: expect.objectContaining({
+          userAgent: 'test-agent',
+          ipAddress: '127.0.0.1',
+        }),
+      });
     });
   });
 

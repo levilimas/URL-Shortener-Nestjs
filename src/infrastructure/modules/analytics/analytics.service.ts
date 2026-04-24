@@ -4,6 +4,7 @@ import { Repository, MoreThanOrEqual } from 'typeorm';
 import { ClickAnalyticsEntity } from '../../../domain/entities/click-analytics.entity';
 import { UrlEntity } from '../../../domain/entities/url.entity';
 import { UrlAnalyticsDto } from '../../../application/dtos/url/analytics.dto';
+import type { ClickRequestSnapshot } from '../../../application/dtos/url/click-request-snapshot.dto';
 
 @Injectable()
 export class AnalyticsService {
@@ -14,15 +15,36 @@ export class AnalyticsService {
     private urlRepository: Repository<UrlEntity>,
   ) {}
 
-  /**
-   * Record a click event with detailed analytics
-   */
+  buildClickSnapshot(request: any): ClickRequestSnapshot {
+    const userAgent = (request.headers?.['user-agent'] as string) || '';
+    return {
+      ipAddress: this.getClientIp(request),
+      userAgent,
+      referer:
+        (request.headers?.referer as string) ||
+        (request.headers?.referrer as string) ||
+        null,
+      utmSource: (request.query?.utm_source as string) || null,
+      utmMedium: (request.query?.utm_medium as string) || null,
+      utmCampaign: (request.query?.utm_campaign as string) || null,
+      utmTerm: (request.query?.utm_term as string) || null,
+      utmContent: (request.query?.utm_content as string) || null,
+    };
+  }
+
   async recordClick(
     urlId: string,
     request: any,
   ): Promise<ClickAnalyticsEntity> {
-    const userAgent = request.headers['user-agent'] || '';
-    const ipAddress = this.getClientIp(request);
+    return this.recordClickFromSnapshot(urlId, this.buildClickSnapshot(request));
+  }
+
+  async recordClickFromSnapshot(
+    urlId: string,
+    snapshot: ClickRequestSnapshot,
+  ): Promise<ClickAnalyticsEntity> {
+    const userAgent = snapshot.userAgent;
+    const ipAddress = snapshot.ipAddress;
 
     const clickAnalytics = this.clickAnalyticsRepository.create({
       urlId,
@@ -33,12 +55,12 @@ export class AnalyticsService {
       device: this.extractDeviceInfo(userAgent),
       browser: this.extractBrowserInfo(userAgent),
       operatingSystem: this.extractOSInfo(userAgent),
-      referer: request.headers.referer || request.headers.referrer || null,
-      utmSource: (request.query?.utm_source as string) || null,
-      utmMedium: (request.query?.utm_medium as string) || null,
-      utmCampaign: (request.query?.utm_campaign as string) || null,
-      utmTerm: (request.query?.utm_term as string) || null,
-      utmContent: (request.query?.utm_content as string) || null,
+      referer: snapshot.referer,
+      utmSource: snapshot.utmSource,
+      utmMedium: snapshot.utmMedium,
+      utmCampaign: snapshot.utmCampaign,
+      utmTerm: snapshot.utmTerm,
+      utmContent: snapshot.utmContent,
       isMobile: this.isMobileDevice(userAgent),
       isBot: this.isBotUserAgent(userAgent),
     });
@@ -46,43 +68,30 @@ export class AnalyticsService {
     return this.clickAnalyticsRepository.save(clickAnalytics);
   }
 
-  /**
-   * Extract country from IP address
-   */
   private extractCountryFromIp(ip: string): string {
-    // Placeholder - in production, use a GeoIP service
     if (ip === '127.0.0.1' || ip.startsWith('192.168.')) {
       return 'Local';
     }
     return 'Unknown';
   }
 
-  /**
-   * Extract city from IP address
-   */
   private extractCityFromIp(ip: string): string {
-    // Placeholder - in production, use a GeoIP service
     if (ip === '127.0.0.1' || ip.startsWith('192.168.')) {
       return 'Local';
     }
     return 'Unknown';
   }
 
-  /**
-   * Extract device information from user agent
-   */
   private extractDeviceInfo(userAgent: string): string {
     if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
       return 'Mobile';
-    } else if (/Tablet/.test(userAgent)) {
+    }
+    if (/Tablet/.test(userAgent)) {
       return 'Tablet';
     }
     return 'Desktop';
   }
 
-  /**
-   * Extract browser information from user agent
-   */
   private extractBrowserInfo(userAgent: string): string {
     if (userAgent.includes('Chrome')) return 'Chrome';
     if (userAgent.includes('Firefox')) return 'Firefox';
@@ -92,9 +101,6 @@ export class AnalyticsService {
     return 'Unknown';
   }
 
-  /**
-   * Extract operating system information from user agent
-   */
   private extractOSInfo(userAgent: string): string {
     if (userAgent.includes('Windows')) return 'Windows';
     if (userAgent.includes('Mac OS')) return 'macOS';
@@ -104,25 +110,16 @@ export class AnalyticsService {
     return 'Unknown';
   }
 
-  /**
-   * Check if device is mobile
-   */
   private isMobileDevice(userAgent: string): boolean {
     return /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       userAgent,
     );
   }
 
-  /**
-   * Check if user agent is a bot
-   */
   private isBotUserAgent(userAgent: string): boolean {
     return /bot|crawler|spider|crawling/i.test(userAgent);
   }
 
-  /**
-   * Get analytics for a specific URL
-   */
   async getUrlAnalytics(
     urlId: string,
     days: number = 30,
@@ -144,14 +141,12 @@ export class AnalyticsService {
     const mobileClicks = clicks.filter((click) => click.isMobile).length;
     const desktopClicks = totalClicks - mobileClicks;
 
-    // Group by various dimensions
     const clicksByCountry = this.groupBy(clicks, 'country');
     const clicksByBrowser = this.groupBy(clicks, 'browser');
     const clicksByOS = this.groupBy(clicks, 'operatingSystem');
     const clicksByReferrer = this.groupByReferrer(clicks);
     const clicksByDate = this.groupByDate(clicks);
 
-    // Get recent clicks (last 10)
     const recentClicks = clicks.slice(0, 10).map((click) => ({
       id: click.id,
       createdAt: click.createdAt,
@@ -185,9 +180,6 @@ export class AnalyticsService {
     };
   }
 
-  /**
-   * Get analytics for all URLs of a user
-   */
   async getUserAnalytics(userId: string, days: number = 30): Promise<any> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -200,7 +192,6 @@ export class AnalyticsService {
     const totalUrls = userUrls.length;
     const totalClicks = userUrls.reduce((sum, url) => sum + url.clicks, 0);
 
-    // Get top performing URLs
     const topUrls = userUrls
       .sort((a, b) => b.clicks - a.clicks)
       .slice(0, 10)
@@ -220,13 +211,10 @@ export class AnalyticsService {
     };
   }
 
-  /**
-   * Extract client IP address
-   */
   private getClientIp(request: any): string {
     return (
-      request.headers['x-forwarded-for']?.split(',')[0] ||
-      request.headers['x-real-ip'] ||
+      request.headers?.['x-forwarded-for']?.split(',')[0] ||
+      request.headers?.['x-real-ip'] ||
       request.connection?.remoteAddress ||
       request.socket?.remoteAddress ||
       request.ip ||
@@ -234,9 +222,6 @@ export class AnalyticsService {
     );
   }
 
-  /**
-   * Group array by field
-   */
   private groupBy(array: any[], field: string): Record<string, number> {
     return array.reduce((acc, item) => {
       const key = item[field] || 'Unknown';
@@ -245,9 +230,6 @@ export class AnalyticsService {
     }, {});
   }
 
-  /**
-   * Group by referrer domain
-   */
   private groupByReferrer(
     clicks: ClickAnalyticsEntity[],
   ): Record<string, number> {
@@ -269,9 +251,6 @@ export class AnalyticsService {
     );
   }
 
-  /**
-   * Group by date
-   */
   private groupByDate(clicks: ClickAnalyticsEntity[]): Record<string, number> {
     return clicks.reduce(
       (acc, click) => {

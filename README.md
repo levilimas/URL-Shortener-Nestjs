@@ -15,9 +15,10 @@ Serviço REST para encurtar URLs, com autenticação JWT, contagem de cliques, a
 | Validação / API | `class-validator`, **Swagger** (`/api/docs`) |
 | Qualidade | **ESLint 9** (flat config), **Prettier**, **Jest** |
 | Deploy local | **Docker Compose**; gateway **KrakenD 2.5** |
+| Fila / cache (opcional) | **pg-boss** (analytics de clique assíncrono no Postgres), **Redis** (cache de URLs sem senha e sem `maxClicks`) |
 | Observabilidade (opcional) | Compose de **Prometheus + Grafana** (ajuste o scrape ao endpoint real de métricas, se houver) |
 
-> **Node:** os Dockerfiles usam Node 18; o CLI do Nest 11 recomenda Node ≥ 20 — para novo ambiente, prefira **Node 20 LTS**.
+> **Node:** **pg-boss 10** exige **Node ≥ 20**. Os Dockerfiles podem ainda usar Node 18 — alinhe a imagem a 20+ se for subir PgBoss no container.
 
 ---
 
@@ -41,7 +42,7 @@ src/
 ## Pré-requisitos
 
 - **Docker** + **Docker Compose** (plugin `docker compose`), ou
-- **Node.js** 18+ (ideal 20+), **npm**, **PostgreSQL** acessível.
+- **Node.js** **20+** (pg-boss), **npm**, **PostgreSQL** acessível; **Redis** opcional (cache).
 
 ---
 
@@ -64,6 +65,11 @@ Variáveis principais (ver [`.env.example`](.env.example)):
 | `DB_*` | Host, porta, usuário, senha e nome do banco PostgreSQL |
 | `JWT_SECRET` / `JWT_EXPIRATION` | Assinatura e TTL do token |
 | `URL_PREFIX` | Base usada na resposta do encurtador (ex.: `http://localhost:8080` atrás do gateway) |
+| `REDIS_ENABLED`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Cache de lookup por `shortCode` (desligado por padrão no `.env.example`) |
+| `PGBOSS_ENABLED` | `true` enfileira gravação de analytics de clique; se o PgBoss não subir, cai no modo síncrono |
+| `DATABASE_URL` | (Opcional) string única do Postgres; usada pelo PgBoss se definida |
+
+A pasta [`frontend/`](frontend/) contém um esqueleto **Vite + React + TypeScript** para evoluir em repositório separado ou monorepo.
 
 ---
 

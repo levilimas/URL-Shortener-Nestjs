@@ -12,9 +12,14 @@ import { UpdateUrlDto } from '../../../application/dtos/url/update-url.dto';
 import { BulkCreateUrlDto } from '../../../application/dtos/url/bulk-create-url.dto';
 import { ConfigService } from '@nestjs/config';
 import { QrCodeService } from './qr-code.service';
-import { AnalyticsService } from './analytics.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { PgBossService } from '../../queue/pg-boss.service';
+import { RedisService } from '../../redis/redis.service';
 import { generateShortCode } from '../../../domain/services/short-code.generator';
 import * as bcrypt from 'bcrypt';
+
+const URL_BY_SHORT_CODE_CACHE_PREFIX = 'url:sc:';
+const URL_BY_SHORT_CODE_CACHE_TTL_SEC = 300;
 
 @Injectable()
 export class UrlsService {
@@ -24,6 +29,8 @@ export class UrlsService {
     private configService: ConfigService,
     private qrCodeService: QrCodeService,
     private analyticsService: AnalyticsService,
+    private pgBossService: PgBossService,
+    private redisService: RedisService,
   ) {}
 
   async create(
@@ -115,9 +122,28 @@ export class UrlsService {
     shortCode: string,
     password?: string,
   ): Promise<UrlEntity> {
-    const url = await this.urlRepository.findOne({
-      where: { shortCode },
-    });
+    let url: UrlEntity | null = null;
+
+    if (!password && this.redisService.isReady()) {
+      const cached = await this.redisService.get(
+        `${URL_BY_SHORT_CODE_CACHE_PREFIX}${shortCode}`,
+      );
+      if (cached) {
+        try {
+          url = this.hydrateUrlFromCache(cached);
+        } catch {
+          await this.redisService.del(
+            `${URL_BY_SHORT_CODE_CACHE_PREFIX}${shortCode}`,
+          );
+        }
+      }
+    }
+
+    if (!url) {
+      url = await this.urlRepository.findOne({
+        where: { shortCode },
+      });
+    }
 
     if (!url) {
       throw new NotFoundException('URL not found');
@@ -142,6 +168,8 @@ export class UrlsService {
         throw new BadRequestException('Invalid password');
       }
     }
+
+    await this.cacheUrlIfEligible(url);
 
     return url;
   }
@@ -177,7 +205,9 @@ export class UrlsService {
         : null;
     }
 
-    return this.urlRepository.save(url);
+    const saved = await this.urlRepository.save(url);
+    await this.invalidateUrlCache(saved.shortCode);
+    return saved;
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -189,6 +219,7 @@ export class UrlsService {
       throw new NotFoundException('URL not found or not owned by user');
     }
 
+    await this.invalidateUrlCache(url.shortCode);
     await this.urlRepository.softRemove(url);
   }
 
@@ -197,12 +228,18 @@ export class UrlsService {
       where: { shortCode },
     });
 
-    if (url) {
-      if (request) {
-        await this.analyticsService.recordClick(url.id, request);
-      }
+    if (!url) {
+      return;
+    }
 
-      await this.urlRepository.increment({ id: url.id }, 'clicks', 1);
+    await this.urlRepository.increment({ id: url.id }, 'clicks', 1);
+
+    if (request) {
+      const snapshot = this.analyticsService.buildClickSnapshot(request);
+      await this.pgBossService.enqueueClickAnalytics({
+        urlId: url.id,
+        snapshot,
+      });
     }
   }
 
@@ -313,5 +350,59 @@ export class UrlsService {
     } while (attempts < maxAttempts);
 
     throw new Error('Unable to generate unique short code');
+  }
+
+  private hydrateUrlFromCache(raw: string): UrlEntity {
+    const row = JSON.parse(raw) as Record<string, unknown>;
+    const url = new UrlEntity();
+    Object.assign(url, row);
+    for (const k of ['createdAt', 'updatedAt', 'expiresAt', 'deletedAt'] as const) {
+      const v = row[k];
+      if (v) {
+        (url as unknown as Record<string, unknown>)[k] = new Date(v as string);
+      }
+    }
+    if (row.clicks !== undefined) {
+      url.clicks = Number(row.clicks);
+    }
+    return url;
+  }
+
+  private async cacheUrlIfEligible(url: UrlEntity): Promise<void> {
+    if (
+      !this.redisService.isReady() ||
+      url.password ||
+      url.maxClicks != null
+    ) {
+      return;
+    }
+    if (!url.isAccessible()) {
+      return;
+    }
+    const payload = {
+      id: url.id,
+      shortCode: url.shortCode,
+      originalUrl: url.originalUrl,
+      clicks: url.clicks,
+      description: url.description,
+      expiresAt: url.expiresAt?.toISOString() ?? null,
+      isActive: url.isActive,
+      isCustomCode: url.isCustomCode,
+      qrCodeUrl: url.qrCodeUrl ?? null,
+      maxClicks: url.maxClicks ?? null,
+      userId: url.userId ?? null,
+      createdAt: url.createdAt?.toISOString(),
+      updatedAt: url.updatedAt?.toISOString(),
+      deletedAt: url.deletedAt?.toISOString() ?? null,
+    };
+    await this.redisService.setex(
+      `${URL_BY_SHORT_CODE_CACHE_PREFIX}${url.shortCode}`,
+      URL_BY_SHORT_CODE_CACHE_TTL_SEC,
+      JSON.stringify(payload),
+    );
+  }
+
+  private async invalidateUrlCache(shortCode: string): Promise<void> {
+    await this.redisService.del(`${URL_BY_SHORT_CODE_CACHE_PREFIX}${shortCode}`);
   }
 }
