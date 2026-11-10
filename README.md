@@ -204,9 +204,10 @@ Hoje o gateway faz principalmente **proxy**, **CORS** e **métricas** do própri
 ## Documentação extra
 
 - [Perguntas de entrevista — Pleno e Sênior](docs/PERGUNTAS_ENTREVISTA.md) (roteiro de estudo e raciocínio de engenharia).
+- [Roadmap](ROADMAP.md) (próximos passos do projeto).
 
 ---
 
 ## Licença
 
-UNLICENSED (projeto privado; ajuste conforme necessidade).
+MIT. Veja [LICENSE](LICENSE).
